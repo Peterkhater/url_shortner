@@ -1,16 +1,32 @@
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from .models import User, Profile, Link
 from datetime import datetime
 import hashlib
 import base64
 import logging
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 
 logger = logging.getLogger(__name__)
 BASE_URL = "http://127.0.0.1:8000/"
 
-def home(request):
-    pass
+
+def home(request, code):
+    """
+    Redirects short URLs to their original destination
+    """
+    try:
+        link = get_object_or_404(Link, short_code=code)
+        return HttpResponseRedirect(link.original)
+    
+    except Http404:
+        return HttpResponseRedirect('https://telegram.com')
+    
+    except Exception as e:
+        print(f"Error redirecting: {str(e)}")
+        return HttpResponseRedirect('https://telegram.com')
 
 @csrf_exempt  
 def short(request):
