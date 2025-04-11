@@ -16,7 +16,6 @@ class Link(models.Model):
 class Profile(models.Model):
     USER_SUB_STATUS = [
         ('trial', 'Trial'),
-        ('normal', 'Normal'),
         ('premium', 'Premium'),
     ]
 

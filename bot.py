@@ -32,7 +32,7 @@ async def msg_handler_fn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if matches:
             for match in matches:
-                link = match[0]  # The first group contains the URL
+                link = match[0] 
                 
                 payload = {
                     'link': link,
