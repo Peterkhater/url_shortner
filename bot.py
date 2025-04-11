@@ -1,12 +1,15 @@
 import logging
-from keys import TOKEN
-from telegram import Update
+
+import requests
+from keys import TOKEN, PAYMENT_TOKEN
+from telegram import LabeledPrice, Update
 from telegram.ext import CommandHandler, ContextTypes, ApplicationBuilder, MessageHandler, filters
 import re
 import aiohttp
 import json
 
-# Configure logging
+Base_url = 'https://127.0.0.1:8000'
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -18,6 +21,100 @@ async def help_fn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=update.effective_chat.id,
         text="Welcome to the link parser bot! Send me any URL to shorten it."
     )
+
+# async def subscribe_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     chat_id = update.message.chat_id
+#     print(f'#########################{type(chat_id)}#########################(int)')
+#     r = requests.get(Base_url+"/check_user", params={'chat_id':chat_id})
+#     title = 'Unlimited Use'
+#     description = 'Subscribe To Use Our Service Unlimited'
+#     payload = 'SuperSecret'
+#     currency = 'USD'
+#     price = 2
+#     prices = [LabeledPrice("unlimited",price*100)]
+#     await context.bot.send_invoice(
+#         chat_id=chat_id,
+#         title=title,
+#         description=description,
+#         payload=payload,
+#         provider_token= PAYMENT_TOKEN,
+#         currency=currency,
+#         prices=prices,
+#         need_name=True
+#     )
+
+async def subscribe_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        chat_id = update.effective_chat.id
+        user = update.effective_user
+        logger.info(f"Subscription request from {user.id} ({user.username})")
+
+        # 1. Check user's current status
+        try:
+            response = requests.get(
+                f"{Base_url}/check_user/",
+                params={'chat_id': chat_id},
+                timeout=5
+            )
+            response.raise_for_status()
+            user_data = response.json()
+            
+            if user_data.get('status') == 'premium':
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="🎉 You're already a premium user! Enjoy unlimited access."
+                )
+                return
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API Error: {str(e)}")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⚠️ Service temporarily unavailable. Please try again later."
+            )
+            return
+
+        
+        title = "Premium Subscription"
+        description = (
+            "Unlock unlimited URL shortening and premium features\n"
+            "• No link limits\n"
+            "• Priority support\n"
+            "• Advanced analytics"
+        )
+        payload = f"subscription_{chat_id}"
+        currency = "USD"
+        
+        
+        price = 199  # $1.99
+        prices = [LabeledPrice("Premium Subscription", price)]
+
+        await context.bot.send_invoice(
+            chat_id=chat_id,
+            title=title,
+            description=description,
+            payload=payload,
+            provider_token=PAYMENT_TOKEN,
+            currency=currency,
+            prices=prices,
+            need_name=True,
+            need_email=True,
+            photo_url="https://yourdomain.com/premium-banner.jpg",
+            photo_size=512,
+            photo_width=800,
+            photo_height=450,
+            start_parameter="premium_subscription"
+        )
+
+        logger.info(f"Invoice sent to {chat_id}")
+
+    except Exception as e:
+        logger.critical(f"Subscribe handler crashed: {str(e)}", exc_info=True)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ An unexpected error occurred. Our team has been notified."
+        )
+
 
 async def msg_handler_fn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -95,6 +192,7 @@ if __name__ == "__main__":
     
     # Add handlers
     application.add_handler(CommandHandler('help', help_fn))
+    application.add_handler(CommandHandler('subscribe', subscribe_handler))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), msg_handler_fn))
     
     # Start the bot

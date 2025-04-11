@@ -19,7 +19,7 @@ class Profile(models.Model):
         ('premium', 'Premium'),
     ]
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     sub_status = models.CharField(max_length=25, choices=USER_SUB_STATUS, default='trial')
     telegram_user_id = models.CharField(max_length=50, null=True, blank=True)
 
